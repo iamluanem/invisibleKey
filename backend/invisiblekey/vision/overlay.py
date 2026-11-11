@@ -16,6 +16,13 @@ PHASE_COLORS = {  # BGR
 }
 ASCII_LABELS = {"backspace": "BKSP", "enter": "ENTER", "shift_l": "SHIFT", "shift_r": "SHIFT", "space": "SPACE"}
 FONT = cv2.FONT_HERSHEY_SIMPLEX
+# Corners are named from the TYPIST's point of view, not the screen's (camera may face the user).
+CORNER_HINTS = {
+    "top_left": "1/4 Click the corner FAR from you, on your LEFT (where the '1' key goes)",
+    "top_right": "2/4 Click the corner FAR from you, on your RIGHT (Backspace side)",
+    "bottom_right": "3/4 Click the corner NEAR you, on your RIGHT (below Enter/Shift)",
+    "bottom_left": "4/4 Click the corner NEAR you, on your LEFT (below Left Shift)",
+}
 
 
 def _px(img: np.ndarray, pts) -> np.ndarray:
@@ -67,8 +74,7 @@ def draw_corners(img: np.ndarray, corners: list[tuple[float, float]], next_name:
             cv2.line(img, tuple(p[i - 1]), tuple(c), (0, 255, 255), 2, cv2.LINE_AA)
     if len(p) == 4:
         cv2.line(img, tuple(p[3]), tuple(p[0]), (0, 255, 255), 2, cv2.LINE_AA)
-    msg = f"Click the {next_name.replace('_', ' ').upper()} corner of the typing area" if next_name else \
-        "ENTER = save | U = undo | R = reset"
+    msg = CORNER_HINTS[next_name] if next_name else "ENTER = save | U = undo | R = reset"
     draw_banner(img, msg, (0, 200, 255))
 
 
