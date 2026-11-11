@@ -3,8 +3,8 @@
 Turn a plain desk into a keyboard using only a webcam: hand tracking, desk calibration
 (homography), temporal tap detection and OS keyboard injection — 100% local.
 
-> **Status: Phase 1 of 5 — core engine + simulation.** Runs and is tested without a camera.
-> Camera/MediaPipe, API and React dashboard come next (see Roadmap).
+> **Status: Phase 2 of 5 — live camera + MediaPipe + calibration in a local debug app.**
+> API and React dashboard come next (see Roadmap).
 
 ## Architecture
 
@@ -39,6 +39,11 @@ Camera ─► HandTracking (MediaPipe, phase 2) ─► FrameObservation (21 land
 | PerformanceMonitor | `invisiblekey/performance.py` |
 | Pipeline | `invisiblekey/pipeline.py` |
 | Simulation | `invisiblekey/simulation.py` |
+| CameraManager | `invisiblekey/vision/camera.py` (threaded, newest-frame) |
+| HandTrackingService | `invisiblekey/vision/hand_tracking.py` (MediaPipe Tasks, VIDEO mode) |
+| Recording / replay | `invisiblekey/recording.py` (JSONL landmarks) |
+| Emergency hotkey | `invisiblekey/safety.py` |
+| Debug app | `invisiblekey/app.py` + `vision/overlay.py` |
 
 ### How a tap is detected
 
@@ -80,10 +85,51 @@ depend on camera angle, lighting and the user, and will be measured in phase 2.
 ```bash
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,vision,input]"
 pytest -q
-python -m invisiblekey.simulation --text "Hello, World!" --noise 0.002
+python -m invisiblekey.simulation --text 'Hello, World!' --noise 0.002   # no camera needed
+python -m invisiblekey.vision.model      # one-time model download (~8 MB), then offline
+python -m invisiblekey.app               # live app
 ```
+
+On Intel Macs pip installs MediaPipe 0.10.21, the last release with Intel Mac wheels. It also
+pins NumPy below 2. Apple Silicon, Windows and Linux get MediaPipe 1.x. Both expose the same Tasks API.
+
+### Debug app
+
+1. **Calibrate:** click the 4 corners of the desk typing area (top-left, top-right, bottom-right,
+   bottom-left as seen on screen), then press ENTER. The calibration is saved in
+   `~/Library/Application Support/InvisibleKey/settings.json`.
+2. **Type:** fingertip dots change color by phase (grey hover · blue moving · orange descending
+   · red contact · green lifting). Green key flash = typed, yellow = uncertain (not typed).
+3. **Keys** (window focused, OS output OFF): `C` recalibrate · `O` toggle OS output ·
+   `+`/`-` sensitivity · `[`/`]` keyboard size · `I J K L` move keyboard · `S` save ·
+   `Z` clear · `R` record landmarks · `Q` quit.
+4. While OS output is ON, the window ignores keys (they could be our own injected keys) except
+   `ESC`. **Global emergency stop from any app: Control + Option + K.** Output refuses to turn on
+   if that hotkey cannot be registered.
+
+`python -m invisiblekey.app --list-cameras` lists cameras, `--camera N` picks one, and `--no-mirror` is
+for a camera that looks down from behind the hands.
+
+### macOS permissions (System Settings → Privacy & Security)
+
+| Permission | Needed for | Grant to |
+|---|---|---|
+| Camera | video capture | your terminal (Terminal / iTerm / Warp / VS Code) |
+| Accessibility | typing into other apps | same terminal |
+| Input Monitoring | global emergency hotkey | same terminal |
+
+### Record real sessions, tune offline
+
+Press `R` in the app to save landmarks to `recordings/*.jsonl` along with the calibration in use. Then
+replay them deterministically through the pipeline, for example after changing thresholds:
+
+```bash
+python -m invisiblekey.recording recordings/session-123.jsonl --expected 'hello world'
+```
+
+This is how real-world accuracy gets measured. Synthetic numbers only validate logic.
 
 ## Safety
 
@@ -107,7 +153,8 @@ python -m invisiblekey.simulation --text "Hello, World!" --noise 0.002
 ## Roadmap
 
 1. ✅ Core engine, rule-based tap detection, simulation, tests
-2. Camera + MediaPipe Hand Landmarker, calibration from live frames, landmark recording/replay
+2. ✅ Camera + MediaPipe Hand Landmarker, calibration from live frames, recording/replay, debug app,
+   global emergency hotkey
 3. FastAPI + WebSocket server, React/TS/Tailwind dashboard (preview, overlay, wizard, stats)
-4. macOS input integration (Accessibility check, global emergency hotkey), Windows/Linux backends
+4. macOS Accessibility check from the UI, Windows/Linux input backends
 5. Language-model decoding (probabilistic key correction), ONNX temporal tap classifier

@@ -121,4 +121,18 @@ class TypingPipeline:
         self._known.clear()
 
 
-__all__ = ["TypingPipeline", "TapEvent", "FrameResult", "FingerPhase"]
+def build_pipeline(settings, backend=None) -> TypingPipeline:
+    """Wire a pipeline from AppSettings (requires a saved calibration)."""
+    if settings.calibration is None:
+        raise ValueError("no calibration: run the calibration wizard first")
+    return TypingPipeline(
+        settings.calibration.transformer(),
+        VirtualKeyboardLayout(settings.layout),
+        RuleBasedTapDetector(settings.detection),
+        TapConfidenceEstimator(settings.confidence),
+        KeyPressPolicy(settings.policy),
+        KeyboardEventDispatcher(backend),
+    )
+
+
+__all__ = ["TypingPipeline", "TapEvent", "FrameResult", "FingerPhase", "build_pipeline"]

@@ -11,6 +11,7 @@ class PerformanceMonitor:
         self.frame_times: deque[float] = deque(maxlen=window)
         self.processing_ms: deque[float] = deque(maxlen=window)
         self.detection_delay_ms: deque[float] = deque(maxlen=window)
+        self.e2e_ms: deque[float] = deque(maxlen=window)  # capture -> key dispatched
         self.decisions: Counter[str] = Counter()
         self.suppressed = 0
         self.chars = 0
@@ -24,6 +25,9 @@ class PerformanceMonitor:
     def record_tap(self, decision: str, impact_t: float, detected_t: float) -> None:
         self.decisions[decision] += 1
         self.detection_delay_ms.append((detected_t - impact_t) * 1000)
+
+    def record_e2e(self, ms: float) -> None:
+        self.e2e_ms.append(ms)
 
     def record_key(self, t: float) -> None:
         self.chars += 1
@@ -44,6 +48,8 @@ class PerformanceMonitor:
             "processing_ms_p50": self._pct(self.processing_ms, 50),
             "processing_ms_p95": self._pct(self.processing_ms, 95),
             "detection_delay_ms_p50": self._pct(self.detection_delay_ms, 50),
+            "e2e_ms_p50": self._pct(self.e2e_ms, 50),
+            "e2e_ms_p95": self._pct(self.e2e_ms, 95),
             "taps": dict(self.decisions),
             "suppressed_duplicates": self.suppressed,
             "chars": self.chars,
