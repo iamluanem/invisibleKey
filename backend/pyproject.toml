@@ -1,0 +1,24 @@
+[project]
+name = "invisiblekey"
+version = "0.1.0"
+description = "Camera-based touchless keyboard: hand tracking, desk calibration and tap detection"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "pydantic>=2.6"]
+
+[project.optional-dependencies]
+input = ["pynput>=1.7"]
+vision = ["opencv-python>=4.9", "mediapipe>=0.10.14"]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
+ml = ["onnxruntime>=1.17"]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["invisiblekey*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
