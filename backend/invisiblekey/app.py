@@ -188,8 +188,8 @@ def main() -> None:
     ap.add_argument("--list-cameras", action="store_true")
     ap.add_argument("--no-mirror", action="store_true", help="for cameras looking down from behind the hands")
     ap.add_argument("--record", type=Path, default=Path("recordings") / f"session-{int(time.time())}.jsonl")
-    ap.add_argument("--width", type=int, default=1280)
-    ap.add_argument("--height", type=int, default=720)
+    ap.add_argument("--width", type=int, default=640)
+    ap.add_argument("--height", type=int, default=480)
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO)
     if a.list_cameras:
@@ -213,6 +213,7 @@ def main() -> None:
             w, h = app.frame_size
             app.click(x / w, y / h)
 
+    track_ms = 0.0
     cv2.namedWindow(WIN, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(WIN, on_mouse)
     with CameraManager(settings.camera_index, a.width, a.height) as cam:
@@ -222,7 +223,9 @@ def main() -> None:
                 continue
             view = tracker.prepare(cf.image)
             app.frame_size = (view.shape[1], view.shape[0])
+            t0 = time.perf_counter()
             obs = tracker.process(view, cf.timestamp)
+            track_ms += 0.1 * ((time.perf_counter() - t0) * 1000 - track_ms)
             res = app.process(obs, cf.timestamp)
             ov.draw_hands(view, obs)
             tf, layout = _preview_layout(app)
@@ -237,7 +240,8 @@ def main() -> None:
                 ov.draw_banner(view, f"OS output: {out}   {app.status}",
                                (0, 0, 255) if app.output_enabled else (0, 220, 0))
                 ov.draw_hud(view, [
-                    f"fps {m['fps']}  proc p50 {m['processing_ms_p50']} ms  e2e p50 {m['e2e_ms_p50']} ms",
+                    f"fps {m['fps']}  tracking {track_ms:.0f} ms  proc {m['processing_ms_p50']} ms  "
+                    f"e2e p50 {m['e2e_ms_p50']} ms",
                     f"taps {m['taps']}  dup {m['suppressed_duplicates']}  wpm {m['wpm']}",
                     f"sensitivity v>{settings.detection.descend_velocity:.2f}  "
                     f"dropped {cam.dropped}  {'REC' if app.recorder else ''}",
