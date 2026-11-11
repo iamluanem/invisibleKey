@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shutil
+import ssl
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -24,13 +25,23 @@ def is_valid_model(path: Path) -> bool:
         return False
 
 
+def _ssl_context() -> ssl.SSLContext:
+    """python.org builds on macOS ship without CA certs; certifi fixes that."""
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
 def ensure_model(path: Path | None = None, url: str = MODEL_URL) -> Path:
     path = Path(path) if path else default_model_path()
     if path.exists() and is_valid_model(path):
         return path
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".download")
-    with urllib.request.urlopen(url, timeout=60) as resp, open(tmp, "wb") as out:
+    with urllib.request.urlopen(url, timeout=60, context=_ssl_context()) as resp, open(tmp, "wb") as out:
         shutil.copyfileobj(resp, out)
     if not is_valid_model(tmp):
         tmp.unlink(missing_ok=True)

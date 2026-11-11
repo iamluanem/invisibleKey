@@ -7,7 +7,7 @@ dependencies = ["numpy>=1.26", "pydantic>=2.6"]
 
 [project.optional-dependencies]
 input = ["pynput>=1.7"]
-vision = ["mediapipe>=0.10.14"]  # bundles OpenCV; Intel Macs resolve to 0.10.21
+vision = ["mediapipe>=0.10.14", "certifi"]  # bundles OpenCV; Intel Macs resolve to 0.10.21
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.29"]
 ml = ["onnxruntime>=1.17"]
 dev = ["pytest>=8"]
